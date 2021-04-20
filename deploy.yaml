@@ -1,0 +1,81 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: getcaps
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: getcaps
+  namespace: getcaps
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caps-script
+  namespace: getcaps
+data:
+  caps.sh: "#!/bin/bash\n\nfor CONTAINERID in $(crictl ps -o table -q)\ndo\n  POD_NAME=$(crictl inspect --output go-template --template='{{index .status.labels \"io.kubernetes.pod.name\"}}' $CONTAINERID)\n  CONTAINER_NAME=$(crictl inspect --output go-template --template='{{index .status.labels \"io.kubernetes.container.name\"}}' $CONTAINERID)\n  INHERITED_SET=$(crictl inspect --output go-template --template='{{.info.runtimeSpec.process.capabilities.inheritable}}' $CONTAINERID)\n  PERMITTED_SET=$(crictl inspect --output go-template --template='{{.info.runtimeSpec.process.capabilities.permitted}}' $CONTAINERID)\n  EFFECTIVE_SET=$(crictl inspect --output go-template --template='{{.info.runtimeSpec.process.capabilities.effective}}' $CONTAINERID)\n  BOUNDING_SET=$(crictl inspect --output go-template --template='{{.info.runtimeSpec.process.capabilities.bounding}}' $CONTAINERID)\n  echo \"==== POD NAME: ${POD_NAME} ====\"\n  echo \"==== CONTAINER NAME: ${CONTAINER_NAME} ====\"\n  echo \"==== INHERITED SET: ${INHERITED_SET} ====\"\n  echo \"==== PERMITTED SET: ${PERMITTED_SET} ====\"\n  echo \"==== EFFECTIVE SET: ${EFFECTIVE_SET} ====\" \n  echo \"==== BOUNDING SET: ${BOUNDING_SET} ====\"\n  echo \"----------------------------------------------------------------\"\ndone\nexit 0\n"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: getcaps-privileged-scc
+  namespace: getcaps
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+- kind: ServiceAccount
+  name: getcaps
+  namespace: getcaps
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: getcaps
+  namespace: getcaps
+  labels:
+    app: getcaps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: getcaps
+  template:
+    metadata:
+      labels:
+        app: getcaps
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      serviceAccountName: getcaps
+      hostPID: true
+      hostNetwork: true
+      containers:
+      - name: getcaps
+        image: quay.io/mavazque/trbsht:latest
+        command:
+        - caps.sh
+        securityContext:
+          runAsUser: 0
+        env:
+          - name: CONTAINER_RUNTIME_ENDPOINT
+            value: "unix:///run/crio/crio.sock"
+        volumeMounts:
+        - name: crio-sock
+          mountPath: /run/crio/crio.sock
+        - name: caps-script
+          mountPath: /usr/bin/caps.sh
+          subPath: caps.sh
+      volumes:
+      - name: crio-sock
+        hostPath:
+          path: /run/crio/crio.sock
+      - name: caps-script
+        configMap:
+          name: caps-script
+          defaultMode: 0755

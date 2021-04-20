@@ -1,6 +1,7 @@
 #!/bin/bash
 
 GO_TEMPLATE='
+==== NAMESPACE: {{index .status.labels "io.kubernetes.pod.namespace"}} ====
 ==== POD NAME: {{index .status.labels "io.kubernetes.pod.name"}} ====
 ==== CONTAINER NAME: {{index .status.labels "io.kubernetes.container.name"}} ====
 ==== INHERITED SET: {{.info.runtimeSpec.process.capabilities.inheritable}} ====

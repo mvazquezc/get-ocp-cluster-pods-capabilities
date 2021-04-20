@@ -43,6 +43,7 @@ A DaemonSet is used to run our container image on every node, we need to mount t
     ~~~
     <OMITTED_OUTPUT>
     ----------------------------------------------------------------
+    ==== NAMESPACE: openshift-machine-config-operator ====
     ==== POD NAME: machine-config-daemon-fxq8r ====
     ==== CONTAINER NAME: oauth-proxy ====
     ==== INHERITED SET: [CAP_CHOWN CAP_DAC_OVERRIDE CAP_FSETID CAP_FOWNER CAP_SETGID CAP_SETUID CAP_SETPCAP CAP_NET_BIND_SERVICE CAP_KILL] ====

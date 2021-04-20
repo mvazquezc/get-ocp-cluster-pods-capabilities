@@ -16,3 +16,4 @@ do
   echo "==== BOUNDING SET: ${BOUNDING_SET} ===="
   echo "----------------------------------------------------------------"
 done
+sleep infinity

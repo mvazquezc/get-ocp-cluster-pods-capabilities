@@ -76,9 +76,9 @@ spec:
       hostNetwork: true
       containers:
       - name: getcaps
-        image: quay.io/mavazque/trbsht:latest
-        command:
-        - caps.sh
+        image: quay.io/mavazque/getcriocaps:latest
+#        command:
+#        - caps.sh 
         securityContext:
           runAsUser: 0
         env:

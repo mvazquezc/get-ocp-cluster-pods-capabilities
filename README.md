@@ -41,14 +41,58 @@ A DaemonSet is used to run our container image on every node, we need to mount t
     ~~~
 
     ~~~
-    <OMITTED_OUTPUT>
-    ----------------------------------------------------------------
-    ==== NAMESPACE: openshift-machine-config-operator ====
-    ==== POD NAME: machine-config-daemon-fxq8r ====
-    ==== CONTAINER NAME: oauth-proxy ====
-    ==== INHERITED SET: [CAP_CHOWN CAP_DAC_OVERRIDE CAP_FSETID CAP_FOWNER CAP_SETGID CAP_SETUID CAP_SETPCAP CAP_NET_BIND_SERVICE CAP_KILL] ====
-    ==== PERMITTED SET: [CAP_CHOWN CAP_DAC_OVERRIDE CAP_FSETID CAP_FOWNER CAP_SETGID CAP_SETUID CAP_SETPCAP CAP_NET_BIND_SERVICE CAP_KILL] ====
-    ==== EFFECTIVE SET: [CAP_CHOWN CAP_DAC_OVERRIDE CAP_FSETID CAP_FOWNER CAP_SETGID CAP_SETUID CAP_SETPCAP CAP_NET_BIND_SERVICE CAP_KILL] ====
-    ==== BOUNDING SET: [CAP_CHOWN CAP_DAC_OVERRIDE CAP_FSETID CAP_FOWNER CAP_SETGID CAP_SETUID CAP_SETPCAP CAP_NET_BIND_SERVICE CAP_KILL] ====
+    caps:
+    - namespace: getcaps
+      pods:
+      - name: getcaps-zxwr8
+        containers:
+        - name: getcaps
+          capabilities:
+          - inherited_set:
+            - CAP_CHOWN
+            - CAP_DAC_OVERRIDE
+            - CAP_FSETID
+            - CAP_FOWNER
+            - CAP_SETGID
+            - CAP_SETUID
+            - CAP_SETPCAP
+            - CAP_NET_BIND_SERVICE
+            - CAP_KILL
+          - permitted_set:
+            - CAP_CHOWN
+            - CAP_DAC_OVERRIDE
+            - CAP_FSETID
+            - CAP_FOWNER
+            - CAP_SETGID
+            - CAP_SETUID
+            - CAP_SETPCAP
+            - CAP_NET_BIND_SERVICE
+            - CAP_KILL
+          - effective_set:
+            - CAP_CHOWN
+            - CAP_DAC_OVERRIDE
+            - CAP_FSETID
+            - CAP_FOWNER
+            - CAP_SETGID
+            - CAP_SETUID
+            - CAP_SETPCAP
+            - CAP_NET_BIND_SERVICE
+            - CAP_KILL
+          - bounding_set:
+            - CAP_CHOWN
+            - CAP_DAC_OVERRIDE
+            - CAP_FSETID
+            - CAP_FOWNER
+            - CAP_SETGID
+            - CAP_SETUID
+            - CAP_SETPCAP
+            - CAP_NET_BIND_SERVICE
+            - CAP_KILL
+    - namespace: openshift-kube-apiserver
+      pods:
+      - name: kube-apiserver-openshift-master-2
+        containers:
+        - name: kube-apiserver-check-endpoints
+          capabilities:
     <OMITTED_OUTPUT>
     ~~~

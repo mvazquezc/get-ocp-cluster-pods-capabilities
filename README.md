@@ -2,9 +2,9 @@
 
 ## How it works
 
-We have a small script (`caps.sh`) that gets the capabilities information directly from CRI-O.
+We have a small script (`caps.py`) that gets the capabilities information directly from CRI-O.
 
-A [container image](https://github.com/mvazquezc/containertools) with some tooling is used, among the different tools we have the `crictl` binary.
+A [container image](./image.dockerfile) is used, it has the caps.py python script and the `crictl` binary.
 
 What we want is connect to the CRI-O runtime from every OpenShift node in order to get information around the containers that are running on the node, we need to do that for every node in the cluster.
 

@@ -76,9 +76,11 @@ spec:
       hostNetwork: true
       containers:
       - name: getcaps
-        image: quay.io/mavazque/getcriocaps:latest
-#        command:
-#        - caps.sh 
+        image: quay.io/mavazque/getcriocaps:v1
+#        args:
+#        - -n
+#        - openshift-monitoring
+#        - openshift-etcd
         securityContext:
           runAsUser: 0
         env:

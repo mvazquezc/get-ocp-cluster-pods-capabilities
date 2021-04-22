@@ -1,7 +1,10 @@
+#!/usr/bin/python3
+
 import os
 import yaml
 import json
 import time
+import argparse
 
 crictl_pods = os.popen('crictl ps -o table -q')
 crictl_pods_result = crictl_pods.read()
@@ -9,6 +12,15 @@ crictl_pods.close()
 
 data = []
 namespaces = []
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-n','--namespaces', nargs='+', help='<Optional> Outputs information for a given list of namespaces', required=False)
+args = parser.parse_args()
+
+output_namespaces = []
+
+if args.namespaces is not None:
+    output_namespaces = args.namespaces
 
 def namespace_exists(namespace, data):
     exists = False
@@ -41,7 +53,6 @@ def pod_exists_in_namespace(pod, namespace_index, data):
            index += 1
    return exists, index
 
-
 for container_id in crictl_pods_result.splitlines():
     crictl_container_inspect = os.popen('crictl inspect --output json ' + container_id)
     crictl_container_inspect_result = crictl_container_inspect.read()
@@ -54,6 +65,10 @@ for container_id in crictl_pods_result.splitlines():
     permitted_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['permitted']
     effective_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['effective']
     bounding_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['bounding']
+    # Check if namespace should be included in the output, if not skip
+    if len(output_namespaces) > 0 and pod_namespace not in output_namespaces:
+        #print("Namespace {0} is not part of the desired output namespaces {1}".format(pod_namespace, output_namespaces))
+        continue
     ns_exists, ns_index = namespace_exists(pod_namespace, data)
     if ns_exists:
         pod_exists, pod_index = pod_exists_in_namespace(pod_name, ns_index, data)

@@ -40,7 +40,7 @@ A DaemonSet is used to run our container image on every node, we need to mount t
     oc -n getcaps logs getcaps-ztr92
     ~~~
 
-    > **NOTE**: Namespaces appended to the output can be specified by using arguments on the DaemonSet, check the comments in the [deploy.yaml file](./deploy.yaml#L80-L83).
+    > **NOTE**: Namespaces appended to the output can be specified by using arguments on the DaemonSet, check the comments in the [deploy.yaml file](./deploy.yaml#L54-L56). An extended output is also available, this output will give you information about container uid/gid, image being used, privileged bit and the entrypoint. Check the comment in the [deploy.yaml file](./deploy.yaml#L57) to get the extended output enabled.
 
     ~~~
     caps:

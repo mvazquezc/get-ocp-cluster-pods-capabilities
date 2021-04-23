@@ -15,6 +15,7 @@ namespaces = []
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-n','--namespaces', nargs='+', help='<Optional> Outputs information for a given list of namespaces', required=False)
+parser.add_argument('-e','--extended-output', help='<Optional> Adds additional information (container\'s uid/gid, privileged bit, entrypoint)', action='store_true', required=False)
 args = parser.parse_args()
 
 output_namespaces = []
@@ -61,6 +62,11 @@ for container_id in crictl_pods_result.splitlines():
     pod_namespace = inspect_result_json['status']['labels']['io.kubernetes.pod.namespace']
     pod_name = inspect_result_json['status']['labels']['io.kubernetes.pod.name']
     container_name = inspect_result_json['status']['labels']['io.kubernetes.container.name']
+    container_uid = inspect_result_json['info']['runtimeSpec']['process']['user']['uid']
+    container_gid = inspect_result_json['info']['runtimeSpec']['process']['user']['gid']
+    container_process = inspect_result_json['info']['runtimeSpec']['process']['args']
+    container_image = inspect_result_json['info']['runtimeSpec']['annotations']['io.kubernetes.cri-o.ImageName']
+    container_privileged = inspect_result_json['info']['privileged']
     inherited_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['inheritable']
     permitted_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['permitted']
     effective_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['effective']
@@ -73,15 +79,30 @@ for container_id in crictl_pods_result.splitlines():
     if ns_exists:
         pod_exists, pod_index = pod_exists_in_namespace(pod_name, ns_index, data)
         if pod_exists:
-            entry = {'name': container_name, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}
+            if args.extended_output:
+                # Create extended entry
+                 entry = {'name': container_name, 'image': container_image, 'privileged': container_privileged, 'user': [{'uid': container_uid}, {'gid': container_gid}], 'entrypoint': container_process, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}            
+            else:
+                # Create standard entry
+                entry = {'name': container_name, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}
             # Append only container to the existing pod
             data[ns_index]['pods'][pod_index]['containers'].append(entry)
         else:
-            entry = {'name': pod_name, 'containers': [{'name': container_name, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}]}
+            if args.extended_output:
+                # Create extended entry
+                entry = {'name': pod_name, 'containers': [{'name': container_name, 'image': container_image, 'privileged': container_privileged, 'user': [{'uid': container_uid}, {'gid': container_gid}], 'entrypoint': container_process, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}]}
+            else:
+                # Create standard entry
+                entry = {'name': pod_name, 'containers': [{'name': container_name, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}]}
             # Insert pod and the container into the existing namespace
             data[ns_index]['pods'].append(entry)
     else:
-        entry = {'namespace': pod_namespace, 'pods': [{'name': pod_name, 'containers': [{'name': container_name, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}]}]}
+        if args.extended_output:
+           # Create extended entry
+           entry = {'namespace': pod_namespace, 'pods': [{'name': pod_name, 'containers': [{'name': container_name, 'image': container_image, 'privileged': container_privileged, 'user': [{'uid': container_uid}, {'gid': container_gid}], 'entrypoint': container_process, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}]}]}
+        else:
+           # Create standard entry
+           entry = {'namespace': pod_namespace, 'pods': [{'name': pod_name, 'containers': [{'name': container_name, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}]}]}
         # Append namespace, pod and the containers into the output
         data.append(entry)
   

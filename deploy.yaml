@@ -10,33 +10,6 @@ metadata:
   name: getcaps
   namespace: getcaps
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: caps-script
-  namespace: getcaps
-data:
-  caps.sh: |
-    #!/bin/bash
-
-    GO_TEMPLATE='
-    ==== NAMESPACE: {{index .status.labels "io.kubernetes.pod.namespace"}} ====
-    ==== POD NAME: {{index .status.labels "io.kubernetes.pod.name"}} ====
-    ==== CONTAINER NAME: {{index .status.labels "io.kubernetes.container.name"}} ====
-    ==== INHERITED SET: {{.info.runtimeSpec.process.capabilities.inheritable}} ====
-    ==== PERMITTED SET: {{.info.runtimeSpec.process.capabilities.permitted}} ====
-    ==== EFFECTIVE SET: {{.info.runtimeSpec.process.capabilities.effective}} ====
-    ==== BOUNDING SET: {{.info.runtimeSpec.process.capabilities.bounding}} ====
-    '
-
-    for CONTAINERID in $(crictl ps -o table -q)
-    do
-      crictl inspect --output go-template --template="${GO_TEMPLATE}" $CONTAINERID
-      echo "----------------------------------------------------------------"
-    done
-
-    sleep infinity
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -81,6 +54,7 @@ spec:
 #        - -n
 #        - openshift-monitoring
 #        - openshift-etcd
+#        - -e
         securityContext:
           runAsUser: 0
         env:
@@ -89,14 +63,7 @@ spec:
         volumeMounts:
         - name: crio-sock
           mountPath: /run/crio/crio.sock
-        - name: caps-script
-          mountPath: /usr/bin/caps.sh
-          subPath: caps.sh
       volumes:
       - name: crio-sock
         hostPath:
           path: /run/crio/crio.sock
-      - name: caps-script
-        configMap:
-          name: caps-script
-          defaultMode: 0755

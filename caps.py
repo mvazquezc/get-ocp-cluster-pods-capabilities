@@ -62,12 +62,6 @@ for container_id in crictl_pods_result.splitlines():
     inspect_result_json = json.loads(crictl_container_inspect_result)
     pod_namespace = inspect_result_json['status']['labels']['io.kubernetes.pod.namespace']
     pod_name = inspect_result_json['status']['labels']['io.kubernetes.pod.name']
-
-    try:
-      pod_annotated_scc = inspect_result_json['info']['runtimeSpec']['annotations']['openshift.io/scc']
-    except:
-      pod_annotated_scc = "(none)"
-
     container_name = inspect_result_json['status']['labels']['io.kubernetes.container.name']
     container_uid = inspect_result_json['info']['runtimeSpec']['process']['user']['uid']
     container_gid = inspect_result_json['info']['runtimeSpec']['process']['user']['gid']
@@ -90,15 +84,22 @@ for container_id in crictl_pods_result.splitlines():
     ns_exists, ns_index = namespace_exists(pod_namespace, data)
     if not ns_exists:
 
+        # Create standard dataset for each namespace
+        data_ns = {'namespace': pod_namespace, 'pods': [] }
 
-        # Create standard entry for namespace
-        entry = {'namespace': pod_namespace, 'pods': [] }
+        if args.extended_output:
+            # Extend with additional data fields
+            kubectl_get_ns_fh = os.popen('''kubectl get -o=jsonpath='{.metadata.labels.openshift\.io/run-level}' namespace ''' + pod_namespace)
+            kubectl_get_ns_txt = kubectl_get_ns_fh.read()
+            kubectl_get_ns_fh.close()
 
-
-        # TODO: capture namespace annotation for run-level
+            if kubectl_get_ns_txt:
+                data_ns["openshift.io/run_level"] = kubectl_get_ns_txt
+            else:
+                data_ns["openshift.io/run_level"] = "(none set)"
 
         # Append namespace with empty pod set into output data set.
-        data.append(entry)
+        data.append(data_ns)
 
 
 
@@ -106,30 +107,36 @@ for container_id in crictl_pods_result.splitlines():
     pod_exists, pod_index = pod_exists_in_namespace(pod_name, ns_index, data)
     if not pod_exists:
 
-        if args.extended_output:
-            # Create extended entry
-            entry = {'name': pod_name, 'pod_scc': pod_annotated_scc, 'containers': [] }
-        else:
-            # Create standard entry
-            entry = {'name': pod_name, 'containers': [] }
+        data_pod = {'name': pod_name, 'containers': [] }
 
-        # Insert pod and the empty container set into the existing namespace
-        data[ns_index]['pods'].append(entry)
+        if args.extended_output:
+
+           # Extend with additional data fields
+           try:
+              pod_annotated_scc = inspect_result_json['info']['runtimeSpec']['annotations']['openshift.io/scc']
+           except:
+              pod_annotated_scc = "(none)"
+
+           data_pod["openshift.io/scc"] = pod_annotated_scc
+
+        # Insert the pod data with empty container set into the existing namespace
+        data[ns_index]['pods'].append(data_pod)
+
 
 
 
     # Finally, append the containers data set into what is now an existing namespace + pod entry in our dataset
+    data_c = {'name': container_name, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}
 
     if args.extended_output:
-        # Create extended entry
-        entry = {'name': container_name, 'image': container_image, 'privileged': container_privileged, 'user': [{'uid': container_uid}, {'gid': container_gid}], 'entrypoint': container_process, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}            
-    else:
-        # Create standard entry
-        entry = {'name': container_name, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}
-
+        # Extend with additional data fields
+        data_c["image"] = container_image
+        data_c["privileged"] = container_privileged
+        data_c["user"] = [{'uid': container_uid}, {'gid': container_gid}]
+        data_c["entrypoint"] = container_process
 
     # Append this container to the existing pod's dataset
-    data[ns_index]['pods'][pod_index]['containers'].append(entry)
+    data[ns_index]['pods'][pod_index]['containers'].append(data_c)
 
 
 

@@ -67,3 +67,4 @@ spec:
       - name: crio-sock
         hostPath:
           path: /run/crio/crio.sock
+          type: Socket

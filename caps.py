@@ -6,7 +6,7 @@ import json
 import time
 import argparse
 
-crictl_pods = os.popen('crictl ps -o table -q')
+crictl_pods = os.popen('crictl ps -o table -q -a')
 crictl_pods_result = crictl_pods.read()
 crictl_pods.close()
 

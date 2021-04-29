@@ -66,7 +66,12 @@ for container_id in crictl_pods_result.splitlines():
     container_gid = inspect_result_json['info']['runtimeSpec']['process']['user']['gid']
     container_process = inspect_result_json['info']['runtimeSpec']['process']['args']
     container_image = inspect_result_json['info']['runtimeSpec']['annotations']['io.kubernetes.cri-o.ImageName']
-    container_scc = inspect_result_json['info']['runtimeSpec']['annotations']['openshift.io/scc']
+    print(container_name)
+    try:
+        container_scc = inspect_result_json['info']['runtimeSpec']['annotations']['openshift.io/scc']
+    except:
+        container_scc = "NotFound"
+    print(container_scc)
     container_privileged = inspect_result_json['info']['privileged']
     inherited_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['inheritable']
     permitted_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['permitted']
@@ -112,4 +117,3 @@ print(yaml.dump(results, default_flow_style=False, indent=2, width=1000, sort_ke
 
 while True:
     time.sleep(500)
-

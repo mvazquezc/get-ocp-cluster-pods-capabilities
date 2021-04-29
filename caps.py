@@ -15,7 +15,8 @@ namespaces = []
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-n','--namespaces', nargs='+', help='<Optional> Outputs information for a given list of namespaces', required=False)
-parser.add_argument('-e','--extended-output', help='<Optional> Adds additional information (container\'s uid/gid, privileged bit, entrypoint)', action='store_true', required=False)
+parser.add_argument('-e','--extended-output', help='<Optional> Adds additional information (container\'s uid/gid, privileged bit, entrypoint, scc)', action='store_true', required=False)
+parser.add_argument('-c','--clear-sets', help='<Optional> Will clear the permitted and effective sets when container uid != 0. Useful for simulate thread\'s capabilities for nonroot containers.', action='store_true', required=False)
 args = parser.parse_args()
 
 output_namespaces = []
@@ -76,6 +77,12 @@ for container_id in crictl_pods_result.splitlines():
     permitted_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['permitted']
     effective_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['effective']
     bounding_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['bounding']
+ 
+    # Clear permitted and effective sets if uid != 0 and user requested the option 
+    if args.clear_sets and container_uid != 0:
+        permitted_set = []
+        effective_set = []
+
     # Check if namespace should be included in the output, if not skip
     if len(output_namespaces) > 0 and pod_namespace not in output_namespaces:
         #print("Namespace {0} is not part of the desired output namespaces {1}".format(pod_namespace, output_namespaces))

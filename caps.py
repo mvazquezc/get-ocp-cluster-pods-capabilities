@@ -6,16 +6,9 @@ import json
 import time
 import argparse
 
-crictl_pods = os.popen('crictl ps -o table -q -a')
-crictl_pods_result = crictl_pods.read()
-crictl_pods.close()
-
-data = []
-namespaces = []
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-n','--namespaces', nargs='+', help='<Optional> Outputs information for a given list of namespaces', required=False)
-parser.add_argument('-e','--extended-output', help='<Optional> Adds additional information (container\'s uid/gid, privileged bit, entrypoint, scc)', action='store_true', required=False)
+parser.add_argument('-e','--extended-output', help='<Optional> Adds additional information (container\'s uid/gid, privileged bit, entrypoint, scc). Note: scc info is available in OCP 4.7+', action='store_true', required=False)
 parser.add_argument('-c','--clear-sets', help='<Optional> Will clear the permitted and effective sets when container uid != 0. Useful for simulate thread\'s capabilities for nonroot containers.', action='store_true', required=False)
 args = parser.parse_args()
 
@@ -54,6 +47,14 @@ def pod_exists_in_namespace(pod, namespace_index, data):
            #print("Pod {0} yet to be found".format(pod))
            index += 1
    return exists, index
+
+
+crictl_pods = os.popen('crictl ps -o table -q -a')
+crictl_pods_result = crictl_pods.read()
+crictl_pods.close()
+
+data = []
+namespaces = []
 
 for container_id in crictl_pods_result.splitlines():
     crictl_container_inspect = os.popen('crictl inspect --output json ' + container_id)

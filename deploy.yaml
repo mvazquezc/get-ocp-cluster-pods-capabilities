@@ -82,13 +82,14 @@ spec:
       hostNetwork: true
       containers:
       - name: getcaps
-        image: quay.io/mavazque/getcriocaps:v1
         imagePullPolicy: Always
-        args:
-        - -e
+        image: quay.io/mavazque/getcriocaps:main
+#        args:
 #        - -n
 #        - openshift-monitoring
 #        - openshift-etcd
+#        - -e
+#        - -c
         securityContext:
           runAsUser: 0
         env:

@@ -6,16 +6,10 @@ import json
 import time
 import argparse
 
-crictl_pods = os.popen('crictl ps -o table -q')
-crictl_pods_result = crictl_pods.read()
-crictl_pods.close()
-
-data = []
-namespaces = []
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-n','--namespaces', nargs='+', help='<Optional> Outputs information for a given list of namespaces', required=False)
-parser.add_argument('-e','--extended-output', help='<Optional> Adds additional information (container\'s uid/gid, privileged bit, entrypoint)', action='store_true', required=False)
+parser.add_argument('-e','--extended-output', help='<Optional> Adds additional information (container\'s uid/gid, privileged bit, entrypoint, scc). Note: scc info is available in OCP 4.7+', action='store_true', required=False)
+parser.add_argument('-c','--clear-sets', help='<Optional> Will clear the permitted and effective sets when container uid != 0. Useful for simulate thread\'s capabilities for nonroot containers.', action='store_true', required=False)
 args = parser.parse_args()
 
 output_namespaces = []
@@ -54,6 +48,13 @@ def pod_exists_in_namespace(pod, namespace_index, data):
            index += 1
    return exists, index
 
+crictl_pods = os.popen('crictl ps -o table -q -a')
+crictl_pods_result = crictl_pods.read()
+crictl_pods.close()
+
+data = []
+namespaces = []
+
 # Loop over all containers running on this host
 for container_id in crictl_pods_result.splitlines():
     crictl_container_inspect = os.popen('crictl inspect --output json ' + container_id)
@@ -67,21 +68,30 @@ for container_id in crictl_pods_result.splitlines():
     container_gid = inspect_result_json['info']['runtimeSpec']['process']['user']['gid']
     container_process = inspect_result_json['info']['runtimeSpec']['process']['args']
     container_image = inspect_result_json['info']['runtimeSpec']['annotations']['io.kubernetes.cri-o.ImageName']
+    # Some containers do not have scc information
+    try:
+        container_scc = inspect_result_json['info']['runtimeSpec']['annotations']['openshift.io/scc']
+    except:
+        container_scc = "NotFound"
     container_privileged = inspect_result_json['info']['privileged']
     inherited_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['inheritable']
     permitted_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['permitted']
     effective_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['effective']
     bounding_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['bounding']
 
-
     # Skip processing this container if it's in a namespace we are not including (default is we include all)
     if len(output_namespaces) > 0 and pod_namespace not in output_namespaces:
         #print("Namespace {0} is not part of the desired output namespaces {1}".format(pod_namespace, output_namespaces))
         continue
-
+    
+    # Clear permitted and effective sets if uid != 0 and user requested the option 
+    if args.clear_sets and container_uid != 0:
+        permitted_set = []
+        effective_set = []
 
     # If the namespace for this container does not yet exist, we create it before continuing ...
     ns_exists, ns_index = namespace_exists(pod_namespace, data)
+
     if not ns_exists:
 
         # Create standard dataset for each namespace
@@ -110,19 +120,11 @@ for container_id in crictl_pods_result.splitlines():
         data_pod = {'name': pod_name, 'containers': [] }
 
         if args.extended_output:
-
-           # Extend with additional data fields
-           try:
-              pod_annotated_scc = inspect_result_json['info']['runtimeSpec']['annotations']['openshift.io/scc']
-           except:
-              pod_annotated_scc = "(none)"
-
-           data_pod["openshift.io/scc"] = pod_annotated_scc
+           # Extend with additional data field
+           data_pod["openshift.io/scc"] = container_scc
 
         # Insert the pod data with empty container set into the existing namespace
         data[ns_index]['pods'].append(data_pod)
-
-
 
 
     # Finally, append the containers data set into what is now an existing namespace + pod entry in our dataset
@@ -141,13 +143,8 @@ for container_id in crictl_pods_result.splitlines():
 
 
 
-
-
-
-
 results = {'caps': data}
 print(yaml.dump(results, default_flow_style=False, indent=2, width=1000, sort_keys=False).replace("'", ''))
 
 while True:
     time.sleep(500)
-

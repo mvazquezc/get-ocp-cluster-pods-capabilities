@@ -82,7 +82,7 @@ spec:
       hostNetwork: true
       containers:
       - name: getcaps
-        image: quay.io/dbaker/getcriocaps:v1
+        image: quay.io/mavazque/getcriocaps:v1
         imagePullPolicy: Always
         args:
         - -e

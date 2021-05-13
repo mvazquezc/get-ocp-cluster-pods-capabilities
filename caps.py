@@ -8,7 +8,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-n','--namespaces', nargs='+', help='<Optional> Outputs information for a given list of namespaces', required=False)
-parser.add_argument('-e','--extended-output', help='<Optional> Adds additional information (container\'s uid/gid, privileged bit, entrypoint, scc). Note: scc info is available in OCP 4.7+', action='store_true', required=False)
+parser.add_argument('-e','--extended-output', help='<Optional> Adds additional information (container\'s uid/gid, privileged bit, entrypoint, scc).', action='store_true', required=False)
 parser.add_argument('-c','--clear-sets', help='<Optional> Will clear the permitted and effective sets when container uid != 0. Useful for simulate thread\'s capabilities for nonroot containers.', action='store_true', required=False)
 args = parser.parse_args()
 
@@ -72,7 +72,7 @@ for container_id in crictl_pods_result.splitlines():
     try:
         container_scc = inspect_result_json['info']['runtimeSpec']['annotations']['openshift.io/scc']
     except:
-        container_scc = "NotFound"
+        container_scc = None
     container_privileged = inspect_result_json['info']['privileged']
     inherited_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['inheritable']
     permitted_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['permitted']
@@ -91,7 +91,6 @@ for container_id in crictl_pods_result.splitlines():
 
     # If the namespace for this container does not yet exist, we create it before continuing ...
     ns_exists, ns_index = namespace_exists(pod_namespace, data)
-
     if not ns_exists:
 
         # Create standard dataset for each namespace
@@ -111,8 +110,6 @@ for container_id in crictl_pods_result.splitlines():
         # Append namespace with empty pod set into output data set.
         data.append(data_ns)
 
-
-
     # If the pod for this container does not yet exist, likewise, we create it before continuing ...
     pod_exists, pod_index = pod_exists_in_namespace(pod_name, ns_index, data)
     if not pod_exists:
@@ -121,7 +118,17 @@ for container_id in crictl_pods_result.splitlines():
 
         if args.extended_output:
            # Extend with additional data field
-           data_pod["openshift.io/scc"] = container_scc
+           if container_scc is None:
+               # SCC information is only present in CRIO on OCP4.7+, below versions will try to get the info using kubectl
+               kubectl_get_pod_scc_fh = os.popen('''kubectl get -o=jsonpath='{.metadata.annotations.openshift\.io/scc}' pod ''' + pod_name + ''' -n ''' + pod_namespace )
+               kubectl_get_pod_scc_txt = kubectl_get_pod_scc_fh.read()
+               kubectl_get_pod_scc_fh.close()
+               if len(kubectl_get_pod_scc_txt) > 0:
+                   data_pod["openshift.io/scc"] = str(kubectl_get_pod_scc_txt)
+               else:
+                   data_pod["openshift.io/scc"] = "(none set)"
+           else:
+               data_pod["openshift.io/scc"] = container_scc
 
         # Insert the pod data with empty container set into the existing namespace
         data[ns_index]['pods'].append(data_pod)
@@ -139,8 +146,6 @@ for container_id in crictl_pods_result.splitlines():
 
     # Append this container to the existing pod's dataset
     data[ns_index]['pods'][pod_index]['containers'].append(data_c)
-
-
 
 
 results = {'caps': data}

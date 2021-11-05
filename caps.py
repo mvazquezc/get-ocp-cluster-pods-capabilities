@@ -73,6 +73,7 @@ for container_id in crictl_pods_result.splitlines():
         container_scc = inspect_result_json['info']['runtimeSpec']['annotations']['openshift.io/scc']
     except:
         container_scc = None
+    
     container_privileged = inspect_result_json['info']['privileged']
     inherited_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['inheritable']
     permitted_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['permitted']
@@ -138,11 +139,31 @@ for container_id in crictl_pods_result.splitlines():
     data_c = {'name': container_name, 'capabilities': [{'inherited_set': inherited_set}, {'permitted_set': permitted_set}, {'effective_set': effective_set}, {'bounding_set': bounding_set}]}
 
     if args.extended_output:
-        # Extend with additional data fields
+        # Extend with additional data fields  oc get scc anyuid -o jsonpath='{.allowPrivilegeEscalation}'
+        
+        # Check if container may run privilege escalation operations        
+        if data_pod["openshift.io/scc"] != "(none set)":
+            kubectl_get_scc_privilege_escalation_fh = os.popen('''kubectl get -o=jsonpath='{.allowPrivilegeEscalation}' scc ''' + data_pod["openshift.io/scc"])
+            kubectl_get_scc_privilege_escalation_txt = kubectl_get_scc_privilege_escalation_fh.read()
+            kubectl_get_scc_privilege_escalation_fh.close()
+            if kubectl_get_scc_privilege_escalation_txt == "true":
+                kubectl_get_scc_privilege_escalation_txt = True
+            else:
+                kubectl_get_scc_privilege_escalation_txt = False
+        else:
+            # No SCC assigned, by default no_new_privs is set to true
+            kubectl_get_scc_privilege_escalation_txt = True
+        
+        # Privilege Escalation will be possible when: container is privileged or container has SYS_ADMIN cap or SCC allows it
+        data_c["privilege_escalation_enabled"] = False
+        if "CAP_SYS_ADMIN" in bounding_set or container_privileged or kubectl_get_scc_privilege_escalation_txt:
+            data_c["privilege_escalation_enabled"] = True
+        
         data_c["image"] = container_image
         data_c["privileged"] = container_privileged
         data_c["user"] = [{'uid': container_uid}, {'gid': container_gid}]
         data_c["entrypoint"] = container_process
+
 
     # Append this container to the existing pod's dataset
     data[ns_index]['pods'][pod_index]['containers'].append(data_c)

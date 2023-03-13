@@ -80,10 +80,22 @@ for container_id in crictl_pods_result.splitlines():
         container_scc = None
     
     container_privileged = inspect_result_json['info']['privileged']
-    inherited_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['inheritable']
-    permitted_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['permitted']
-    effective_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['effective']
-    bounding_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['bounding']
+    try:
+        inherited_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['inheritable']
+    except:
+        inherited_set = None
+    try:
+        permitted_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['permitted']
+    except:
+        permitted_set = None
+    try:
+        effective_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['effective']
+    except:
+        effective_set = None
+    try:
+        bounding_set = inspect_result_json['info']['runtimeSpec']['process']['capabilities']['bounding']
+    except:
+        bounding_set = None
 
     # Skip processing this container if it's in a namespace we are not including (default is we include all)
     if len(output_namespaces) > 0 and pod_namespace not in output_namespaces:
